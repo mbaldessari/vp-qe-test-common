@@ -84,4 +84,4 @@ def subscription_status(openshift_dyn_client, expected_subs):
             f"FAIL: The following subscriptions are in UpgradePending state: {upgrades_pending}"
         )
 
-    return missing_subs, unhealthy_subs, missing_installplans, upgrades_pending
+    return operator_versions, missing_subs, unhealthy_subs, missing_installplans, upgrades_pending
