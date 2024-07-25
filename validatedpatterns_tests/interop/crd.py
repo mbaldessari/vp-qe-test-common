@@ -1,6 +1,15 @@
 from ocp_resources.resource import NamespacedResource, Resource
 
 
+class DeploymentConfig(NamespacedResource):
+    """
+    OpenShift DeploymentConfig object.
+    """
+
+    api_version = "apps.openshift.io/v1"
+    kind = "DeploymentConfig"
+
+
 class ArgoCD(NamespacedResource):
     """
     OpenShift ArgoCD / GitOps object.
