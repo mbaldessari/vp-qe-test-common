@@ -75,4 +75,4 @@ def get_argocd_application_status(openshift_dyn_client, project):
                 ) or res.status != "Synced":
                     logger.info(f"\n{res}")
 
-        return unhealthy_apps
+    return unhealthy_apps
