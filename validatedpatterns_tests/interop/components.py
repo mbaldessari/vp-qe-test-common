@@ -109,3 +109,35 @@ def check_pod_status(openshift_dyn_client, project):
                 )
 
     return failed_pods
+
+
+def validate_site_reachable(kube_config, openshift_dyn_client):
+    logger.info("Check if site API end point is reachable")
+    api_url = kube_config.host
+    if not api_url:
+        err_msg = "Site url is missing in kubeconfig file"
+        assert False, err_msg
+    else:
+        logger.info(f"api url : {api_url}")
+
+    bearer_token = get_long_live_bearer_token(
+        dyn_client=openshift_dyn_client,
+        namespace="openshift-gitops",
+        sub_string="argocd-dex-server-token",
+    )
+
+    if not bearer_token:
+        assert False, "Bearer token is missing for argocd-dex-server"
+
+    api_response = get_site_response(
+        site_url=edge_api_url, bearer_token=bearer_token
+    )
+
+    return api_response
+
+    # if edge_api_response.status_code != 200:
+    #     err_msg = "Edge site is not reachable. Please check the deployment."
+    #     logger.error(f"FAIL: {err_msg}")
+    #     assert False, err_msg
+    # else:
+    #     logger.info("PASS: Edge site is reachable")
