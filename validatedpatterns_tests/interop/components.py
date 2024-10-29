@@ -8,6 +8,7 @@ from openshift.dynamic.exceptions import NotFoundError
 
 from . import __loggername__
 from .edge_util import get_long_live_bearer_token, get_site_response
+from validatedpatterns_tests.interop import application
 
 logger = logging.getLogger(__loggername__)
 
@@ -72,17 +73,39 @@ def check_pod_absence(openshift_dyn_client, project):
     return missing_pods
 
 
-def check_pod_status(openshift_dyn_client, project):
+def check_pod_status(openshift_dyn_client, projects):
+    missing_projects = components.check_project_absense(openshift_dyn_client, projects)
+    missing_pods = []
     failed_pods = []
-    pods = Pod.get(dyn_client=openshift_dyn_client, namespace=project)
-    for pod in pods:
-        for container in pod.instance.status.containerStatuses:
-            logger.info(
-                f"{pod.instance.metadata.name} : {container.name} :"
-                f" {container.state}"
-            )
-            if container.state.terminated:
-                if container.state.terminated.reason != "Completed":
+    err_msg = []
+
+    for project in projects:
+        logger.info(f"Checking pods in namespace '{project}'")
+        missing_pods += components.check_pod_absence(openshift_dyn_client, project)
+        pods = Pod.get(dyn_client=openshift_dyn_client, namespace=project)
+        for pod in pods:
+            for container in pod.instance.status.containerStatuses:
+                logger.info(
+                    f"{pod.instance.metadata.name} : {container.name} :"
+                    f" {container.state}"
+                )
+                if container.state.terminated:
+                    if container.state.terminated.reason != "Completed":
+                        logger.info(
+                            f"Pod {pod.instance.metadata.name} in"
+                            f" {pod.instance.metadata.namespace} namespace is"
+                            " FAILED:"
+                        )
+                        failed_pods.append(pod.instance.metadata.name)
+                        logger.info(describe_pod(project, pod.instance.metadata.name))
+                        logger.info(
+                            get_log_output(
+                                project,
+                                pod.instance.metadata.name,
+                                container.name,
+                            )
+                        )
+                elif not container.state.running:
                     logger.info(
                         f"Pod {pod.instance.metadata.name} in"
                         f" {pod.instance.metadata.namespace} namespace is"
@@ -91,33 +114,32 @@ def check_pod_status(openshift_dyn_client, project):
                     failed_pods.append(pod.instance.metadata.name)
                     logger.info(describe_pod(project, pod.instance.metadata.name))
                     logger.info(
-                        get_log_output(
-                            project,
-                            pod.instance.metadata.name,
-                            container.name,
-                        )
+                        get_log_output(project, pod.instance.metadata.name, container.name)
                     )
-            elif not container.state.running:
-                logger.info(
-                    f"Pod {pod.instance.metadata.name} in"
-                    f" {pod.instance.metadata.namespace} namespace is"
-                    " FAILED:"
-                )
-                failed_pods.append(pod.instance.metadata.name)
-                logger.info(describe_pod(project, pod.instance.metadata.name))
-                logger.info(
-                    get_log_output(project, pod.instance.metadata.name, container.name)
-                )
 
-    return failed_pods
+    if missing_projects:
+        err_msg.append(f"The following namespaces are missing: {missing_projects}")
+
+    if missing_pods:
+        err_msg.append(
+            f"The following namespaces have no pods deployed: {missing_pods}"
+        )
+
+    if failed_pods:
+        err_msg.append(f"The following pods are failed: {failed_pods}")
+
+    if err_msg:
+        return False, err_msg
+    else:
+        return None
 
 
 def validate_site_reachable(kube_config, openshift_dyn_client):
     namespace = "openshift-gitops"
     sub_string = "argocd-dex-server-token"
 
-    api_url = get_site_api_url(kube_config)
-    api_response = get_site_api_response(
+    api_url = application.get_site_api_url(kube_config)
+    api_response = application.get_site_api_response(
         openshift_dyn_client, api_url, namespace, sub_string
     )
 
