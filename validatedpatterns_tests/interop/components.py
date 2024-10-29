@@ -7,6 +7,7 @@ from ocp_resources.pod import Pod
 from openshift.dynamic.exceptions import NotFoundError
 
 from . import __loggername__
+from .edge_util import get_long_live_bearer_token, get_site_response
 
 logger = logging.getLogger(__loggername__)
 
@@ -112,32 +113,43 @@ def check_pod_status(openshift_dyn_client, project):
 
 
 def validate_site_reachable(kube_config, openshift_dyn_client):
-    logger.info("Check if site API end point is reachable")
-    api_url = kube_config.host
-    if not api_url:
-        err_msg = "Site url is missing in kubeconfig file"
-        assert False, err_msg
+    namespace = "openshift-gitops"
+    sub_string = "argocd-dex-server-token"
+
+    api_url = get_site_api_url(kube_config)
+    api_response = get_site_api_response(
+        openshift_dyn_client, api_url, namespace, sub_string
+    )
+
+    logger.info(f"Site API response : {api_response}")
+
+    if api_response.status_code != 200:
+        err_msg = "Site is not reachable. Please check the deployment."
+        return False, err_msg
     else:
-        logger.info(f"api url : {api_url}")
+        return None
 
-    bearer_token = get_long_live_bearer_token(
-        dyn_client=openshift_dyn_client,
-        namespace="openshift-gitops",
-        sub_string="argocd-dex-server-token",
-    )
 
-    if not bearer_token:
-        assert False, "Bearer token is missing for argocd-dex-server"
+def validate_argocd_reachable(openshift_dyn_client):
+    namespace = "openshift-gitops"
+    name = "openshift-gitops-server"
+    sub_string = "argocd-dex-server-token"
+    logger.info("Check if argocd route/url on hub site is reachable")
+    try:
+        argocd_route_url = get_argocd_route_url(
+            openshift_dyn_client, namespace, name
+        )
+        argocd_route_response = get_site_api_response(
+            openshift_dyn_client, argocd_route_url, namespace, sub_string
+        )
+    except StopIteration:
+        err_msg = "Argocd url/route is missing in open-cluster-management namespace"
+        assert False, err_msg
 
-    api_response = get_site_response(
-        site_url=edge_api_url, bearer_token=bearer_token
-    )
+    logger.info(f"Argocd route response : {argocd_route_response}")
 
-    return api_response
-
-    # if edge_api_response.status_code != 200:
-    #     err_msg = "Edge site is not reachable. Please check the deployment."
-    #     logger.error(f"FAIL: {err_msg}")
-    #     assert False, err_msg
-    # else:
-    #     logger.info("PASS: Edge site is reachable")
+    if argocd_route_response.status_code != 200:
+        err_msg = "Argocd is not reachable. Please check the deployment"
+        return False, err_msg
+    else:
+        return None
