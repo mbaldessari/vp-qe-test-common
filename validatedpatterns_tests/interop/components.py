@@ -1,14 +1,15 @@
 import logging
 import os
 import subprocess
+import yaml
 
 from ocp_resources.namespace import Namespace
 from ocp_resources.pod import Pod
 from openshift.dynamic.exceptions import NotFoundError
 
 from . import __loggername__
-from .edge_util import get_long_live_bearer_token, get_site_response
 from validatedpatterns_tests.interop import application
+from validatedpatterns_tests.interop.crd import ManagedCluster
 
 logger = logging.getLogger(__loggername__)
 
@@ -47,7 +48,7 @@ def get_log_output(project, pod, container):
         assert False, cmd_out.stderr
 
 
-def check_project_absense(openshift_dyn_client, projects):
+def check_project_absence(openshift_dyn_client, projects):
     missing_projects = []
 
     for project in projects:
@@ -74,14 +75,14 @@ def check_pod_absence(openshift_dyn_client, project):
 
 
 def check_pod_status(openshift_dyn_client, projects):
-    missing_projects = components.check_project_absense(openshift_dyn_client, projects)
+    missing_projects = check_project_absence(openshift_dyn_client, projects)
     missing_pods = []
     failed_pods = []
     err_msg = []
 
     for project in projects:
         logger.info(f"Checking pods in namespace '{project}'")
-        missing_pods += components.check_pod_absence(openshift_dyn_client, project)
+        missing_pods += check_pod_absence(openshift_dyn_client, project)
         pods = Pod.get(dyn_client=openshift_dyn_client, namespace=project)
         for pod in pods:
             for container in pod.instance.status.containerStatuses:
@@ -158,10 +159,10 @@ def validate_argocd_reachable(openshift_dyn_client):
     sub_string = "argocd-dex-server-token"
     logger.info("Check if argocd route/url on hub site is reachable")
     try:
-        argocd_route_url = get_argocd_route_url(
+        argocd_route_url = application.get_argocd_route_url(
             openshift_dyn_client, namespace, name
         )
-        argocd_route_response = get_site_api_response(
+        argocd_route_response = application.get_site_api_response(
             openshift_dyn_client, argocd_route_url, namespace, sub_string
         )
     except StopIteration:
@@ -175,3 +176,32 @@ def validate_argocd_reachable(openshift_dyn_client):
         return False, err_msg
     else:
         return None
+
+
+def validate_acm_self_registration_managed_clusters(openshift_dyn_client, kubefiles):
+    err_msg = []
+    for kubefile in kubefiles:
+        kubefile_exp = os.path.expandvars(kubefile)
+        with open(kubefile_exp) as stream:
+            try:
+                out = yaml.safe_load(stream)
+                site_name = out["clusters"][0]["name"]
+            except yaml.YAMLError:
+                err_msg = "Failed to load kubeconfig file"
+                assert False, err_msg
+
+        clusters = ManagedCluster.get(dyn_client=openshift_dyn_client, name=site_name)
+        cluster = next(clusters)
+        is_managed_cluster_joined, managed_cluster_status = cluster.self_registered
+
+        logger.info(f"Cluster Managed : {is_managed_cluster_joined}")
+        logger.info(f"Managed Cluster Status : {managed_cluster_status}")
+
+        if not is_managed_cluster_joined:
+            err_msg += f"{site_name} is not self registered"
+            # logger.error(f"FAIL: {err_msg}")
+            # return False, err_msg
+        else:
+            return None
+
+    return err_msg
