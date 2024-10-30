@@ -199,8 +199,6 @@ def validate_acm_self_registration_managed_clusters(openshift_dyn_client, kubefi
 
         if not is_managed_cluster_joined:
             err_msg += f"{site_name} is not self registered"
-            # logger.error(f"FAIL: {err_msg}")
-            # return False, err_msg
         else:
             return None
 
