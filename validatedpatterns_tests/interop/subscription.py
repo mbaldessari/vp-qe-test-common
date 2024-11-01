@@ -21,7 +21,7 @@ def openshift_version(openshift_dyn_client):
     return version
 
 
-def subscription_status(openshift_dyn_client, expected_subs):
+def subscription_status(openshift_dyn_client, expected_subs, diff):
 
     operator_versions = []
     missing_subs = []
@@ -91,7 +91,7 @@ def subscription_status(openshift_dyn_client, expected_subs):
     cluster_version = openshift_version(openshift_dyn_client)
     logger.info(f"Openshift version:\n{cluster_version.instance.status.history}")
 
-    if os.getenv("EXTERNAL_TEST") != "true":
+    if (os.getenv("EXTERNAL_TEST") != "true") and (diff == True):
         shortversion = re.sub("(.[0-9]+$)", "", os.getenv("OPENSHIFT_VER"))
         currentfile = os.getcwd() + "/operators_hub_current"
         sourceFile = open(currentfile, "w")
@@ -141,7 +141,7 @@ def subscription_status(openshift_dyn_client, expected_subs):
         # Only push the new operarator list if the test passed
         # and we are not testing a pre-release operator nor
         # running externally
-        if os.getenv("EXTERNAL_TEST") != "true":
+        if (os.getenv("EXTERNAL_TEST") != "true") and (diff == True):
             if checkpath is True and not os.environ["INDEX_IMAGE"]:
                 os.remove(previouspath)
                 os.rename(currentfile, previouspath)
