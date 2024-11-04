@@ -22,7 +22,6 @@ def openshift_version(openshift_dyn_client):
 
 
 def subscription_status(openshift_dyn_client, expected_subs, diff):
-
     operator_versions = []
     missing_subs = []
     unhealthy_subs = []

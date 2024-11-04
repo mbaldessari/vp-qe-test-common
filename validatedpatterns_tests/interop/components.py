@@ -121,7 +121,9 @@ def check_pod_status(openshift_dyn_client, projects):
                     failed_pods.append(pod.instance.metadata.name)
                     logger.info(describe_pod(project, pod.instance.metadata.name))
                     logger.info(
-                        get_log_output(project, pod.instance.metadata.name, container.name)
+                        get_log_output(
+                            project, pod.instance.metadata.name, container.name
+                        )
                     )
 
     if missing_projects:
@@ -211,7 +213,9 @@ def validate_acm_self_registration_managed_clusters(openshift_dyn_client, kubefi
     return err_msg
 
 
-def validate_pipelineruns(openshift_dyn_client, project, expected_pipelines, expected_pipelineruns):
+def validate_pipelineruns(
+    openshift_dyn_client, project, expected_pipelines, expected_pipelineruns
+):
     found_pipelines = []
     found_pipelineruns = []
     passed_pipelineruns = []
