@@ -56,23 +56,27 @@ def get_argocd_route_url(openshift_dyn_client, project, name):
     return final_argocd_url
 
 
-def get_argocd_application_status(openshift_dyn_client, project):
+def get_argocd_application_status(openshift_dyn_client, projects):
     unhealthy_apps = []
 
-    for app in ArgoCD.get(dyn_client=openshift_dyn_client, namespace=project):
-        app_name = app.instance.metadata.name
-        app_health = app.instance.status.health.status
-        app_sync = app.instance.status.sync.status
+    for project in projects:
+        for app in ArgoCD.get(dyn_client=openshift_dyn_client, namespace=project):
+            app_name = app.instance.metadata.name
+            app_health = app.instance.status.health.status
+            app_sync = app.instance.status.sync.status
 
-        logger.info(f"Status for {app_name} : {app_health} : {app_sync}")
+            logger.info(f"Status for {app_name} : {app_health} : {app_sync}")
 
-        if "Healthy" != app_health or "Synced" != app_sync:
-            logger.info(f"Dumping failed resources for app: {app_name}")
-            unhealthy_apps.append(app_name)
-            for res in app.instance.status.resources:
-                if (
-                    res.health and res.health.status != "Healthy"
-                ) or res.status != "Synced":
-                    logger.info(f"\n{res}")
+            if "Healthy" != app_health or "Synced" != app_sync:
+                logger.info(f"Dumping failed resources for app: {app_name}")
+                unhealthy_apps.append(app_name)
+                try:
+                    for res in app.instance.status.resources:
+                        if (
+                            res.health and res.health.status != "Healthy"
+                        ) or res.status != "Synced":
+                            logger.info(f"\n{res}")
+                except TypeError:
+                    logger.info(f"No resources found for app: {app_name}")
 
     return unhealthy_apps
