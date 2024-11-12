@@ -80,17 +80,27 @@ def check_pod_absence(openshift_dyn_client, project):
     return missing_pods
 
 
-def check_pod_status(openshift_dyn_client, projects):
+def check_pod_status(openshift_dyn_client, projects, skip_check=""):
     missing_projects = check_project_absence(openshift_dyn_client, projects)
     missing_pods = []
     failed_pods = []
     err_msg = []
+    flag = ""
 
     for project in projects:
         logger.info(f"Checking pods in namespace '{project}'")
         missing_pods += check_pod_absence(openshift_dyn_client, project)
         pods = Pod.get(dyn_client=openshift_dyn_client, namespace=project)
         for pod in pods:
+            if skip_check:
+                for skip in skip_check:
+                    if skip in pod.instance.metadata.name:
+                        logger.info(f"Skipping: {pod.instance.metadata.name}")
+                        break
+
+            if flag == "skipped":
+                continue
+
             for container in pod.instance.status.containerStatuses:
                 logger.info(
                     f"{pod.instance.metadata.name} : {container.name} :"
