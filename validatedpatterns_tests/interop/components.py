@@ -322,7 +322,7 @@ def validate_pipelineruns(
         logger.info(f"Passed pipelineruns: {passed_pipelineruns}")
 
         if (len(failed_pipelineruns) + len(passed_pipelineruns)) == len(
-            expected_pipelines
+            expected_pipelineruns
         ):
             break
         else:
