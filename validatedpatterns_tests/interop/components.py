@@ -240,6 +240,7 @@ def validate_pipelineruns(
         err_msg = "No pipelines were found"
         return False, err_msg
 
+    logger.info("FUCKME1")
     for pipeline in Pipeline.get(dyn_client=openshift_dyn_client, namespace=project):
         for expected_pipeline in expected_pipelines:
             match = expected_pipeline + "$"
@@ -258,6 +259,7 @@ def validate_pipelineruns(
     logger.info("Checking Openshift pipeline runs")
     timeout = time.time() + 3600
 
+    logger.info("FUCKME2")
     # FAIL here if no pipelineruns are found
     try:
         pipelineruns = PipelineRun.get(
@@ -269,6 +271,7 @@ def validate_pipelineruns(
         return False, err_msg
 
     while time.time() < timeout:
+        logger.info("FUCKME3")
         for pipelinerun in PipelineRun.get(
             dyn_client=openshift_dyn_client, namespace=project
         ):
@@ -296,6 +299,7 @@ def validate_pipelineruns(
     logger.info("Checking Openshift pipeline run status")
     timeout = time.time() + 3600
 
+    logger.info("FUCKME4")
     while time.time() < timeout:
         for pipelinerun in PipelineRun.get(
             dyn_client=openshift_dyn_client, namespace=project
