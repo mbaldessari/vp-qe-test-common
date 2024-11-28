@@ -223,6 +223,10 @@ def validate_acm_self_registration_managed_clusters(openshift_dyn_client, kubefi
 
     return err_msg
 
+def lol(msg):
+    import datetime
+    with open('/tmp/lol.txt', 'a+', encoding='utf-8') as f:
+        f.write('[LOL] %s %s\n' % (str(datetime.datetime.now()), msg))
 
 def validate_pipelineruns(
     openshift_dyn_client, project, expected_pipelines, expected_pipelineruns
@@ -231,6 +235,7 @@ def validate_pipelineruns(
     found_pipelineruns = []
     passed_pipelineruns = []
     failed_pipelineruns = []
+    lol("here")
 
     # FAIL here if no pipelines are found
     try:
